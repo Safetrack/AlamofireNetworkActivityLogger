@@ -63,6 +63,9 @@ public class NetworkActivityLogger {
     
     private var startDates: [URLSessionTask: Date]
     
+    /// Logger to use when logging values. Default value is ConsoleLogger
+    open var logger: GenericLogger = ConsoleLogger()
+    
     // MARK: - Internal - Initialization
     
     init() {
@@ -123,20 +126,18 @@ public class NetworkActivityLogger {
         switch level {
         case .debug:
             logDivider()
-            
-            print("\(httpMethod) '\(requestURL.absoluteString)':")
+            logger.logDebug("\(httpMethod) '\(requestURL.absoluteString)':")
             
             if let httpHeadersFields = request.allHTTPHeaderFields {
                 logHeaders(headers: httpHeadersFields)
             }
             
             if let httpBody = request.httpBody, let httpBodyString = String(data: httpBody, encoding: .utf8) {
-                print(httpBodyString)
+                logger.logDebug(httpBodyString)
             }
         case .info:
             logDivider()
-            
-            print("\(httpMethod) '\(requestURL.absoluteString)'")
+            logger.logInfo("\(httpMethod) '\(requestURL.absoluteString)'")
         default:
             break
         }
@@ -166,11 +167,13 @@ public class NetworkActivityLogger {
         
         if let error = task.error {
             switch level {
-            case .debug, .info, .warn, .error:
+            case .debug,
+                 .info,
+                 .warn,
+                 .error:
                 logDivider()
-                
-                print("[Error] \(httpMethod) '\(requestURL.absoluteString)' [\(String(format: "%.04f", elapsedTime)) s]:")
-                print(error)
+                logger.logError("[Error] \(httpMethod) '\(requestURL.absoluteString)' [\(String(format: "%.04f", elapsedTime)) s]:")
+                logger.logError(error)
             default:
                 break
             }
@@ -182,29 +185,27 @@ public class NetworkActivityLogger {
             switch level {
             case .debug:
                 logDivider()
-                
-                print("\(String(response.statusCode)) '\(requestURL.absoluteString)' [\(String(format: "%.04f", elapsedTime)) s]:")
+                logger.logDebug("\(String(response.statusCode)) '\(requestURL.absoluteString)' [\(String(format: "%.04f", elapsedTime)) s]:")
                 
                 logHeaders(headers: response.allHeaderFields)
                 
                 guard let data = sessionDelegate[task]?.delegate.data else { break }
-                    
+                
                 do {
                     let jsonObject = try JSONSerialization.jsonObject(with: data, options: .mutableContainers)
                     let prettyData = try JSONSerialization.data(withJSONObject: jsonObject, options: .prettyPrinted)
                     
                     if let prettyString = String(data: prettyData, encoding: .utf8) {
-                        print(prettyString)
+                        logger.logDebug(prettyString)
                     }
                 } catch {
                     if let string = NSString(data: data, encoding: String.Encoding.utf8.rawValue) {
-                        print(string)
+                        logger.logDebug(string)
                     }
                 }
             case .info:
                 logDivider()
-                
-                print("\(String(response.statusCode)) '\(requestURL.absoluteString)' [\(String(format: "%.04f", elapsedTime)) s]")
+                logger.logInfo("\(String(response.statusCode)) '\(requestURL.absoluteString)' [\(String(format: "%.04f", elapsedTime)) s]")
             default:
                 break
             }
@@ -214,14 +215,14 @@ public class NetworkActivityLogger {
 
 private extension NetworkActivityLogger {
     func logDivider() {
-        print("---------------------")
+        logger.log("---------------------")
     }
     
     func logHeaders(headers: [AnyHashable : Any]) {
-        print("Headers: [")
+        logger.logDebug("Headers: [")
         for (key, value) in headers {
-            print("  \(key) : \(value)")
+            logger.logDebug("  \(key) : \(value)")
         }
-        print("]")
+        logger.logDebug("]")
     }
 }
